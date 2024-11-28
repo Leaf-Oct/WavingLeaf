@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	systray.Run(onReady, nil)
+	// systray.Run(onReady, nil)
+	Init()
 }
 
 //go:embed icon.png
@@ -29,12 +30,28 @@ func onReady() {
 	go func() {
 		for {
 			select {
+			// 怎么会有这么傻逼的check uncheck逻辑？
 			case <-sftpItem.ClickedCh:
-				print("sftp 启动")
+				if sftpItem.Checked() {
+					sftpItem.Uncheck()
+				} else {
+					sftpItem.Check()
+				}
+				print(sftpItem.Checked())
 			case <-ftpItem.ClickedCh:
-				print("ftp 启动")
+				if ftpItem.Checked() {
+					ftpItem.Uncheck()
+				} else {
+					ftpItem.Check()
+				}
+				print(ftpItem.Checked())
 			case <-webdavItem.ClickedCh:
-				print("webdav 启动")
+				if webdavItem.Checked() {
+					webdavItem.Uncheck()
+				} else {
+					webdavItem.Check()
+				}
+				print(webdavItem.Checked())
 			case <-configItem.ClickedCh:
 				systray.Quit()
 			case <-aboutItem.ClickedCh:
