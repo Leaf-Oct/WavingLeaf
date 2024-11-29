@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	// systray.Run(onReady, nil)
+	// systray.Run(onReady, onExit)
 	Init()
 }
 
@@ -55,10 +55,15 @@ func onReady() {
 			case <-configItem.ClickedCh:
 				systray.Quit()
 			case <-aboutItem.ClickedCh:
-				systray.Quit()
+				go Info("测试")
 			case <-exitItem.ClickedCh:
 				systray.Quit()
 			}
 		}
 	}()
+}
+
+func onExit(){
+	CloseDB()
+
 }

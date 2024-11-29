@@ -92,17 +92,35 @@ func CloseDB() {
 	db.Close()
 }
 
-func AddUser(id string, password string, home string, writable int) (bool, string) {
-
+func AddUser(id string, password string, home string, writable int) bool {
+	insertSQL := "INSERT INTO account (id, password, home, writable) VALUES (?, ?, ?, ?);"
+	_, err := db.Exec(insertSQL, id, password, home, writable)
+	if err != nil {
+		log.Fatalf("初始化配置数据失败: %v", err)
+		return false
+	}
+	return true
 }
 
 func DeleteUser(id string) bool {
-
+	deleteSQL := "DELETE FROM account WHERE id = ?;"
+	_, err := db.Exec(deleteSQL, 12345)
+	if err != nil {
+		log.Fatalf("删除用户失败: %v", err)
+		return false
+	}
+	return true
 }
 
 // id作为主键，不可更新，此处仅用于查找。只能更新用户的密码，主目录和权限
-func UpdateUser(id string, password string, home string, writable int) {
-
+func UpdateUser(id string, password string, home string, writable int) bool {
+	updateSQL := "UPDATE account SET password = ?, home = ?, writable = ? WHERE id = ?"
+	_, err := db.Exec(updateSQL, password, home, writable, id)
+	if err != nil {
+		log.Fatalf("更新用户信息失败: %v", err)
+		return false
+	}
+	return true
 }
 
 // 只返回用户ID，主目录和权限，密码不返回
