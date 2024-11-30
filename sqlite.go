@@ -138,7 +138,7 @@ func CheckUser(id string, password string) {
 }
 
 // 用枚举实现一个查对应服务的端口
-func GetPort() int {
+func GetPort(enum ) int {
 
 }
 
