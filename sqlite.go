@@ -41,7 +41,7 @@ func Init() {
 			id INTEGER NOT NULL PRIMARY KEY,
 			sftp INTEGER NOT NULL,
 			ftp INTEGER NOT NULL,
-			webdav INTEGER NOT NULL,
+			webdav INTEGER NOT NULL
 		);
 		`
 		_, err := db.Exec(createTableSQL)
@@ -138,11 +138,14 @@ func CheckUser(id string, password string) {
 }
 
 // 用枚举实现一个查对应服务的端口
-func GetPort(enum ) int {
-
+func GetPort() int {
+	// TODO
+	return 0
 }
 
 // 根据枚举，更新对应服务的端口
-func UpadtePort(enum, int) bool {
+func UpadtePort(int) bool {
+	// TODO
+	return false
 
 }

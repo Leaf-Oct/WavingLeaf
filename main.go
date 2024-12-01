@@ -8,7 +8,8 @@ import (
 
 func main() {
 	// systray.Run(onReady, onExit)
-	Init()
+	// Init()
+	// FTPTest()
 }
 
 //go:embed icon.png
@@ -55,7 +56,7 @@ func onReady() {
 			case <-configItem.ClickedCh:
 				systray.Quit()
 			case <-aboutItem.ClickedCh:
-				go Info("测试")
+				Info("测试")
 			case <-exitItem.ClickedCh:
 				systray.Quit()
 			}
@@ -63,7 +64,7 @@ func onReady() {
 	}()
 }
 
-func onExit(){
+func onExit() {
 	CloseDB()
 
 }
