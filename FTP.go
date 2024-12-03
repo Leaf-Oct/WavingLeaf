@@ -1,5 +1,6 @@
 package main
 
+// 考虑换一个FTP库
 import (
 	"errors"
 	"log"
