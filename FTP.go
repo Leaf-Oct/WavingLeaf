@@ -18,7 +18,7 @@ func FTPTest() {
 		Driver:    driver,
 		Auth:      &UserAuth{},
 		Perm:      server.NewSimplePerm("root", "root"),
-		RateLimit: 1000000, // 1MB/s limit
+		RateLimit: 0,
 	})
 	if err != nil {
 		log.Fatal(err)
