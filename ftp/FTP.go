@@ -1,8 +1,6 @@
-package main
+package ftp
 
-// 考虑换一个FTP库
 import (
-	"errors"
 	"log"
 
 	"goftp.io/server/v2"
@@ -10,13 +8,15 @@ import (
 )
 
 func FTPTest() {
-	driver, err := file.NewDriver("/home/leaf/")
+	driver, err := file.NewDriver("/home/leaf")
+	drivers_map := make(map[string]server.Driver)
+	drivers_map["leaf"] = driver
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	s, err := server.NewServer(&server.Options{
-		Driver:    driver,
+		Driver:    NewMultiUserDriver(drivers_map),
 		Auth:      &UserAuth{},
 		Perm:      server.NewSimplePerm("root", "root"),
 		RateLimit: 0,
@@ -28,13 +28,4 @@ func FTPTest() {
 	if err := s.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-type UserAuth struct{}
-
-func (ua *UserAuth) CheckPasswd(ctx *server.Context, username, password string) (bool, error) {
-	if username == "leaf" && password == "test" {
-		return true, nil
-	}
-	return false, errors.New("用户密码错误")
 }
