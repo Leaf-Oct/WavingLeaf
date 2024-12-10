@@ -2,7 +2,8 @@ package main
 
 import (
 	_ "embed"
-	"leaf/wavingleaf/ftp"
+	// "leaf/wavingleaf/ftp"
+	"leaf/wavingleaf/sftp"
 
 	"github.com/getlantern/systray"
 )
@@ -10,7 +11,8 @@ import (
 func main() {
 	// systray.Run(onReady, onExit)
 	// Init()
-	ftp.FTPTest()
+	// ftp.FTPTest()
+	sftp.TestSFTP()
 }
 
 //go:embed icon.png
