@@ -40,8 +40,10 @@ func handleConn(conn net.Conn) {
 
 	for newChannel := range chans {
 		if newChannel.ChannelType() == "session" {
+			print("是session")
 			go handleSession(newChannel)
 		} else if newChannel.ChannelType() == "sftp" {
+			print("是sftp")
 			go handleSFTP(newChannel)
 		}
 	}
@@ -89,9 +91,9 @@ func TestSFTP() {
 
 	config := &ssh.ServerConfig{
 		NoClientAuth: false,
+		PasswordCallback: passwordAuth,
 	}
 	config.AddHostKey(privateKey)
-	config.PasswordCallback = passwordAuth
 
 	listener, err := net.Listen("tcp", ":2222")
 	if err != nil {

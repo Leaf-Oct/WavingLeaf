@@ -12,7 +12,7 @@ func main() {
 	// systray.Run(onReady, onExit)
 	// Init()
 	// ftp.FTPTest()
-	sftp.TestSFTP()
+	sftp.TestNewSFTP()
 }
 
 //go:embed icon.png
