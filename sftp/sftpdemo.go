@@ -1,142 +1,149 @@
 package sftp
 
+// An example SFTP server implementation using the golang SSH package.
+// Serves the whole filesystem visible to the user, and has a hard-coded username and password,
+// so not for real use!
+
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
-	"sync"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/term"
 )
 
-func TestNewSFTP() {
-	// Public key authentication is done by comparing
-	// the public key of a received connection
-	// with the entries in the authorized_keys file.
-	// authorizedKeysBytes, err := os.ReadFile("github")
-	// if err != nil {
-	// 	log.Fatalf("Failed to load authorized_keys, err: %v", err)
-	// }
+// Based on example server code from golang.org/x/crypto/ssh and server_standalone
+// func main
+func TestSFTPDDemo() {
+	var (
+		readOnly    bool
+		debugStderr bool
+	)
 
-	// authorizedKeysMap := map[string]bool{}
-	// for len(authorizedKeysBytes) > 0 {
-	// 	pubKey, _, _, rest, err := ssh.ParseAuthorizedKey(authorizedKeysBytes)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
+	flag.BoolVar(&readOnly, "R", false, "read-only server")
+	flag.BoolVar(&debugStderr, "e", false, "debug to stderr")
+	flag.Parse()
 
-	// 	authorizedKeysMap[string(pubKey.Marshal())] = true
-	// 	authorizedKeysBytes = rest
-	// }
+	debugStream := io.Discard
+	if debugStderr {
+		debugStream = os.Stderr
+	}
 
 	// An SSH server is represented by a ServerConfig, which holds
 	// certificate details and handles authentication of ServerConns.
 	config := &ssh.ServerConfig{
-		// Remove to disable password auth.
 		PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
 			// Should use constant-time compare (or better, salt+hash) in
 			// a production setting.
+			fmt.Fprintf(debugStream, "Login: %s\n", c.User())
 			if c.User() == "leaf" && string(pass) == "test" {
 				return nil, nil
 			}
 			return nil, fmt.Errorf("password rejected for %q", c.User())
 		},
-
-		// Remove to disable public key auth.
-		// PublicKeyCallback: func(c ssh.ConnMetadata, pubKey ssh.PublicKey) (*ssh.Permissions, error) {
-		// 	if authorizedKeysMap[string(pubKey.Marshal())] {
-		// 		return &ssh.Permissions{
-		// 			// Record the public key used for authentication.
-		// 			Extensions: map[string]string{
-		// 				"pubkey-fp": ssh.FingerprintSHA256(pubKey),
-		// 			},
-		// 		}, nil
-		// 	}
-		// 	return nil, fmt.Errorf("unknown public key for %q", c.User())
-		// },
 	}
 
 	privateBytes, err := os.ReadFile("github")
 	if err != nil {
-		log.Fatal("Failed to load private key: ", err)
+		log.Fatal("Failed to load private key", err)
 	}
 
 	private, err := ssh.ParsePrivateKey(privateBytes)
 	if err != nil {
-		log.Fatal("Failed to parse private key: ", err)
+		log.Fatal("Failed to parse private key", err)
 	}
+
 	config.AddHostKey(private)
 
 	// Once a ServerConfig has been configured, connections can be
 	// accepted.
 	listener, err := net.Listen("tcp", "0.0.0.0:2022")
 	if err != nil {
-		log.Fatal("failed to listen for connection: ", err)
+		log.Fatal("failed to listen for connection", err)
 	}
+	fmt.Printf("Listening on %v\n", listener.Addr())
+
 	nConn, err := listener.Accept()
 	if err != nil {
-		log.Fatal("failed to accept incoming connection: ", err)
+		log.Fatal("failed to accept incoming connection", err)
 	}
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
 	_, chans, reqs, err := ssh.NewServerConn(nConn, config)
 	if err != nil {
-		log.Fatal("failed to handshake: ", err)
+		log.Fatal("failed to handshake", err)
 	}
-	// log.Printf("logged in with key %s", conn.Permissions.Extensions["pubkey-fp"])
+	fmt.Fprintf(debugStream, "SSH server established\n")
 
-	var wg sync.WaitGroup
-	defer wg.Wait()
 	// The incoming Request channel must be serviced.
-	wg.Add(1)
-	go func() {
-		ssh.DiscardRequests(reqs)
-		wg.Done()
-	}()
+	go ssh.DiscardRequests(reqs)
+
 	// Service the incoming Channel channel.
 	for newChannel := range chans {
 		// Channels have a type, depending on the application level
-		// protocol intended. In the case of a shell, the type is
-		// "session" and ServerShell may be used to present a simple
-		// terminal interface.
+		// protocol intended. In the case of an SFTP session, this is "subsystem"
+		// with a payload string of "<length=4>sftp"
+		fmt.Fprintf(debugStream, "Incoming channel: %s\n", newChannel.ChannelType())
 		if newChannel.ChannelType() != "session" {
 			newChannel.Reject(ssh.UnknownChannelType, "unknown channel type")
+			fmt.Fprintf(debugStream, "Unknown channel type: %s\n", newChannel.ChannelType())
 			continue
 		}
 		channel, requests, err := newChannel.Accept()
 		if err != nil {
-			log.Fatalf("Could not accept channel: %v", err)
+			log.Fatal("could not accept channel.", err)
 		}
+		fmt.Fprintf(debugStream, "Channel accepted\n")
 
 		// Sessions have out-of-band requests such as "shell",
 		// "pty-req" and "env".  Here we handle only the
-		// "shell" request.
-		wg.Add(1)
+		// "subsystem" request.
 		go func(in <-chan *ssh.Request) {
 			for req := range in {
-				req.Reply(req.Type == "shell", nil)
+				fmt.Fprintf(debugStream, "Request: %v\n", req.Type)
+				ok := false
+				switch req.Type {
+				case "subsystem":
+					fmt.Fprintf(debugStream, "Subsystem: %s\n", req.Payload[4:])
+					if string(req.Payload[4:]) == "sftp" {
+						ok = true
+					}
+				}
+				fmt.Fprintf(debugStream, " - accepted: %v\n", ok)
+				req.Reply(ok, nil)
 			}
-			wg.Done()
 		}(requests)
 
-		term := term.NewTerminal(channel, "> ")
+		serverOptions := []sftp.ServerOption{
+			sftp.WithDebug(debugStream),
+			sftp.WithServerWorkingDirectory("/home/leaf"),
+		}
 
-		wg.Add(1)
-		go func() {
-			defer func() {
-				channel.Close()
-				wg.Done()
-			}()
-			for {
-				line, err := term.ReadLine()
-				if err != nil {
-					break
-				}
-				fmt.Println(line)
+		if readOnly {
+			serverOptions = append(serverOptions, sftp.ReadOnly())
+			fmt.Fprintf(debugStream, "Read-only server\n")
+		} else {
+			fmt.Fprintf(debugStream, "Read write server\n")
+		}
+
+		server, err := sftp.NewServer(
+			channel,
+			serverOptions...,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := server.Serve(); err != nil {
+			if err != io.EOF {
+				log.Fatal("sftp server completed with error:", err)
 			}
-		}()
+		}
+		server.Close()
+		log.Print("sftp client exited session.")
 	}
 }
